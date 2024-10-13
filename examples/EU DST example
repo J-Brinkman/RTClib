@@ -1,0 +1,52 @@
+/* EU DST example */
+/* version 1: dd 23-10-2024 */
+
+#include <RTClib.h>   // https://github.com/adafruit/rtclib 
+RTC_DS3231 rtc; 
+//RTC_DS1307 rtc;
+
+#define USEDST  true // Use DST (true or false)
+
+DateTime now;
+
+DateTime dstclock(DateTime n) { // Return the given (DST adjusted) date and time according to DST settings (aespecially for date/time checking)
+  
+  DateTime b, e;
+  
+  b = DateTime(n.year(), 3, 31, 3, 0, 0); b = DateTime(n.year(), 3, 31 - b.dayOfTheWeek(), 1, 0, 0); // Last sunday in march 1:00
+  e = DateTime(n.year(), 10, 31, 3, 0, 0); e = DateTime(n.year(), 10, 31 - e.dayOfTheWeek(), 3, 0, 0); // Last sunday in October 3:00
+
+  if (USEDST && (n > b) && (n < e)) n = n + TimeSpan(0,1,0,0); // adjust standard time if within summertime
+  return n;
+}; 
+
+DateTime getclock() { // Retrieve the (DST adjusted) date and time
+  
+  DateTime n, b, e;
+  
+  n = rtc.now();
+  b = DateTime(n.year(), 3, 31, 3, 0, 0); b = DateTime(n.year(), 3, 31 - b.dayOfTheWeek(), 1, 0, 0); // Last sunday in march 1:00
+  e = DateTime(n.year(), 10, 31, 3, 0, 0); e = DateTime(n.year(), 10, 31 - e.dayOfTheWeek(), 3, 0, 0); // Last sunday in October 3:00
+
+  if (USEDST && (n > b) && (n < e)) n = n + TimeSpan(0,1,0,0); // adjust standard time if within summertime
+  return n;
+}; 
+
+void setclock(DateTime n) { // if the clock is set during summertime then adjust the clock to standard time
+
+  if (USEDST && (rtc.now() != getclock())) n = n - TimeSpan(0,1,0,0); // if summertime then adjust to the standard time or
+  if (USEDST && (rtc.now() != dstclock(rtc.now()))) n = n - TimeSpan(0,1,0,0); // if summertime then adjust to the standard time or
+  rtc.adjust(n); // Set the clock to standard time
+}; 
+
+void setup() {
+  // initialise the rtc 
+  rtc.begin();
+  if (rtc.lostPower())  setclock(DateTime(F(__DATE__), F(__TIME__))); // Set date and time for use with the DS3231 RTC
+  if (!rtc.isrunning()) setclock(DateTime(F(__DATE__), F(__TIME__))); // Set date and time for use with the DS1307 RTC
+}
+
+void loop() {
+  now = getclock(); // read the time from the RTC and adjust for DST or
+  now = dstclock(rtc.now()); // read the time from the RTC and adjust for DST and do date/time checking
+}
