@@ -1,7 +1,7 @@
-/* European Daylight Saving Time (DST) example */
+/* European Daylight Saving Time (DST) */
 
 // The Real Time Clock is kept in local winter time (standard time). This approach is key for the simplicity of this solution.
-// This code is for a DST from Last sunday in March 1:00 (am) local time until Last sunday in October 3:00 (am) local time. 
+// This code is for a DST from Last sunday in March 2:00 (am) local time until Last sunday in October 3:00 (am) local time. 
 // The DST time can be changed if required, by choosing a different hour in the DateTime function (4th parameter).
 
 #include <RTClib.h>   // https://github.com/adafruit/rtclib 
@@ -18,27 +18,17 @@ DateTime dstclock(DateTime n) { // Return the given (DST adjusted) date and time
   
   DateTime b, e;
   
-  b = DateTime(n.year(), 3, 31, 1, 0, 0); // Begin of DST: set on March 31 1:000 (am)
-  if (n.month() == 3) b = DateTime(n.year(), 3, 31 - b.dayOfTheWeek(), 1, 0, 0); // Begin of DST: adjusted to last sunday in March 1:00 (am) when actual month is March
-  e = DateTime(n.year(), 10, 31, 3, 0, 0); // End of DST: set on October 31 3:00 (am)
-  if (n.month() == 10) e = DateTime(n.year(), 10, 31 - e.dayOfTheWeek(), 3, 0, 0); // End of DST: adjusted to last sunday in October 3:00 (am) when actual month is October
+  b = DateTime(n.year(), 3, 31, 2, 0, 0); // Begin of DST: set on March 31 2:00 (am)
+  if (n.month() == 3) b = DateTime(n.year(), 3, 31 - b.dayOfTheWeek(), 2, 0, 0); // Begin of DST: adjusted to last sunday in March 2:00 (am) when actual month is March
+  e = DateTime(n.year(), 10, 31, 2, 0, 0); // End of DST: set on October 31 2:00 (am)
+  if (n.month() == 10) e = DateTime(n.year(), 10, 31 - e.dayOfTheWeek(), 2, 0, 0); // End of DST: adjusted to last sunday in October 2:00 (am) when actual month is October
 
-  if (USEDST && (n > b) && (n < e)) n = n + TimeSpan(0,1,0,0); // adjust to standard time if within summertime
+  if (USEDST && (n >= b) && (n < e)) n = n + TimeSpan(0,1,0,0); // adjust to standard time if within summertime
   return n;
 }; 
 
 DateTime getclock() { // Retrieve the (DST adjusted) date and time
-  
-  DateTime n, b, e;
-  
-  n = rtc.now();
-  b = DateTime(n.year(), 3, 31, 1, 0, 0); // Begin of DST: set on March 31 1:000 (am)
-  if (n.month() == 3) b = DateTime(n.year(), 3, 31 - b.dayOfTheWeek(), 1, 0, 0); // Begin of DST: adjusted to last sunday in March 1:00 (am) when actual month is March
-  e = DateTime(n.year(), 10, 31, 3, 0, 0); // End of DST: set on October 31 3:00 (am)
-  if (n.month() == 10) e = DateTime(n.year(), 10, 31 - e.dayOfTheWeek(), 3, 0, 0); // End of DST: adjusted to last sunday in October 3:00 (am) when actual month is October
-
-  if (USEDST && (n > b) && (n < e)) n = n + TimeSpan(0,1,0,0); // adjust to standard time if within summertime
-  return n;
+  return dstclock(rtc.now());
 }; 
 
 void setclock(DateTime n) { // if the clock is set during summertime then adjust the clock to standard time
@@ -55,14 +45,13 @@ void setup() {
 
   // initialise the serial port 
   Serial.begin(BAUD);
-  Wire.begin();
   Serial.println(""); Serial.println(""); Serial.println("----------------- New start ------------------");;
 
   // Start the DST demonstration
   setclock(DateTime(F(__DATE__), F(__TIME__))); // Set the clock to compile date and time
 
   // show standard (winter) time
-  now = rtc.now(); // retreive the winter time
+  now = rtc.now(); // retreive the standard time
   Serial.print("     Actual standard time: ");
   Serial.print(now.timestamp(DateTime::TIMESTAMP_DATE)); Serial.print(" ");  // print the date
   Serial.println(now.timestamp(DateTime::TIMESTAMP_TIME));                   // print the time 
@@ -75,19 +64,18 @@ void setup() {
   Serial.println("");
   delay(5000); 
 
-  Serial.println("Demonstration of the DST activation");
-  Serial.println("-----------------------------------");
-  Serial.println(" DST starts at: 2024-03-31 01:00:00");
-  Serial.println("First DST time: 2024-03-31 02:00:01");
+  Serial.println("- Demonstration of the DST activation -");
+  Serial.println("---------------------------------------");
+  Serial.println("Last standard time: 2024-03-31 01:59:59");
+  Serial.println("    First DST time: 2024-03-31 03:00:00");
   Serial.println("");
   delay(5000); 
-  setclock(DateTime(2024, 3, 31, 0, 59, 45)); // Set the clock 15 seconds before DST starts
+  setclock(DateTime(2024, 3, 31, 1, 59, 45)); // Set the clock 15 seconds before DST starts
   lastsec = now.second(); 
 }
 
 void loop() {
   now = getclock(); // read the time from the RTC and adjust for DST or
-  // now = dstclock(rtc.now()); // read the time from the RTC and adjust for DST
   if (lastsec != now.second()) { // if a new second
     Serial.print(now.timestamp(DateTime::TIMESTAMP_DATE)); Serial.print(" ");  // print the date
     Serial.print(now.timestamp(DateTime::TIMESTAMP_TIME)); Serial.println(""); // print the time
