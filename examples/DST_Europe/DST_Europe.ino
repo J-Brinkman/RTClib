@@ -8,14 +8,16 @@
 RTC_DS3231 rtc; 
 //RTC_DS1307 rtc;
 
-#define USEDST  true // Use DST (true or false)
 #define BAUD   57600 // Baud rate for the serial monitor
-#define getclock() dstclock(rtc.now()) // Improve code readability: replace getclock() with dstclock(rtc.now())
+#define USEDST  true // Use DST (true or false)
+#define StoA       1 // Standard (stored) time to actual time
+#define AtoS       2 // Actual time to standard (stored) time
+#define getclock() dstclock(rtc.now(), 1) // Improve code readability: replace getclock() with dstclock(rtc.now(), StoA)
 
 DateTime now; 
 int lastsec;
 
-DateTime dstclock(DateTime n) { // Return the given (DST adjusted) date and time according to DST settings (for extensive date and time calculations)
+DateTime dstclock(DateTime n, int type) { // Return the given (DST adjusted) date and time according to DST settings (for extensive date and time calculations)
   
   DateTime b, e;
   
@@ -24,14 +26,15 @@ DateTime dstclock(DateTime n) { // Return the given (DST adjusted) date and time
   e = DateTime(n.year(), 10, 31, 2, 0, 0); // End of DST: set on October 31 2:00 (am)
   if (n.month() == 10) e = DateTime(n.year(), 10, 31 - e.dayOfTheWeek(), 2, 0, 0); // End of DST: adjusted to last sunday in October 2:00 (am) when actual month is October
 
-  if (USEDST && (n >= b) && (n < e)) n = n + TimeSpan(0,1,0,0); // adjust to standard time if DST is used and within summertime 
+  if (USEDST) {
+    if ((type == StoA) && (n >= b) && (n < e)) n = n + TimeSpan(0,1,0,0); else // adjust standard (winter) to actual time if DST is used and within summertime 
+      if ((type == AtoS) && (n >= b) && (n < e)) n = n - TimeSpan(0,1,0,0); // adjust actual to standard (winter) time if DST is used and within summertime 
+  }
   return n;
-}; 
+};  
 
 void setclock(DateTime n) { // if the clock is set during summertime then adjust the clock to standard time
-
-  if (USEDST && (n != dstclock(n))) n = n - TimeSpan(0,1,0,0); // if DST is used and within summertime then adjust to the standard time 
-  rtc.adjust(n); // Set the clock to standard time
+  rtc.adjust(dstclock(n, AtoS)); // Set the clock to standard time
 }; 
 
 void setup() {
